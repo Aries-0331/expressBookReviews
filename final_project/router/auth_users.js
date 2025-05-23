@@ -1,5 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env.development')});
 let books = require("./booksdb.js");
 const regd_users = express.Router();
 
@@ -26,8 +28,8 @@ regd_users.post("/login", (req,res) => {
   }
   if (authenticatedUser(username, password)) {
     let accessToken = jwt.sign({
-      data: password
-    }, 'accessToken', { expiresIn: 60 * 60 });
+      data: username
+    }, process.env.JWT_SECRET, { expiresIn: 3600 });
     req.session.authorization = {
       accessToken, username
     };
@@ -39,16 +41,25 @@ regd_users.post("/login", (req,res) => {
 
 // Add a book review
 regd_users.put("/auth/review/:isbn", (req, res) => {
-  const { username, review } = req.session.authorization;
+  const { username } = req.session.authorization;
+  const review = req.body.review;
   const isbn = req.params.isbn;
+
   if (books[isbn]) {
     const isReviewed = books[isbn].reviews[username];
-    if (isReviewed) {
-      books[isbn].reviews[username] = review;
-      return res.status(200).json({message: "Review updated"});
-    } else {
-      books[isbn].reviews[username] = review;
-      return res.status(200).json({message: "Review added"});
+    books[isbn].reviews[username] = review;
+    return res.status(200).json({message: isReviewed ? "Review updated" : "Review added"});
+  }
+  return res.status(404).json({message: "Book not found"});
+});
+
+regd_users.delete("/auth/review/:isbn", (req, res) => {
+  const { username } = req.session.authorization;
+  const isbn = req.params.isbn;
+  if (books[isbn]) {
+    if (books[isbn].reviews[username]) {
+      delete books[isbn].reviews[username];
+      return res.status(200).json({message: "Review deleted"});
     }
   }
   return res.status(404).json({message: "Book not found"});

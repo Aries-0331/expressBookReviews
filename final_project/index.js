@@ -3,18 +3,20 @@ const jwt = require('jsonwebtoken');
 const session = require('express-session')
 const customer_routes = require('./router/auth_users.js').authenticated;
 const genl_routes = require('./router/general.js').general;
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env.development')});
 
 const app = express();
 
 app.use(express.json());
 
-app.use("/customer",session({secret:"fingerprint_customer",resave: true, saveUninitialized: true}))
+app.use("/customer",session({secret: process.env.JWT_SECRET, resave: true, saveUninitialized: true}))
 
 app.use("/customer/auth/*", function auth(req,res,next){
   //Write the authenication mechanism here
   if(req.session.authorization){
     token = req.session.authorization['accessToken']
-    jwt.verify(token, 'access', function(err, decoded) {
+    jwt.verify(token, process.env.JWT_SECRET, function(err, decoded) {
       if (!err) {
         req.user = decoded.user;
         next();
